@@ -114,10 +114,8 @@
         int16_t distance;       // Distance at which alarm is triggered.
     }alarm_t;
 
-
-
-    void getName(const char* name);
-    void getSerialNumber(const char* serialNumber);
+    void getName(char* name);
+    void getSerialNumber(char* serialNumber);
     void sendUserData(uint8_t* data);
     void getUserData(uint8_t* data);
 
@@ -136,7 +134,7 @@
     
     void enableStream(bool enabled);
 
-    void enableLaser(uint8_t enabled);
+    void enableLaser(bool enabled);
     bool checkLaser(void);
 
     void setOutputRate(lidarOutputRate_t outputRate);
@@ -151,6 +149,8 @@
     void setAlarm(alarm_t alarmSettings, uint8_t alarmNumber);
     alarm_t checkAlarm(uint8_t alarmNumber);
 
+    void setupLidar(const char* port, lidarBaudrate_t baudrate);
+    void closeLidar(void);
 
     /*function to handle incoming stream*/
 #endif

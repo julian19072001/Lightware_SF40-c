@@ -13,6 +13,16 @@
 
 device_t lidarCOM;
 
+typedef struct flags{
+	union{
+		uint16_t sr;
+		struct{
+			unsigned int rw :1,
+			:5,
+			pay_len :10;
+		};
+	};
+}flag_t;
 
 /*! \brief Calculate checksum for lidar data
  *  
@@ -43,7 +53,7 @@ uint16_t createCRC(uint8_t* data, uint16_t size){
  *  
  *  \param payload location where payload needs to be saved
  *  
- *  \retval Amount of bytes in payload.
+ *  \retval Amount of bytes in data packed.
  *  \retval -1 : first byte doesnt equal the start byte.
  *  \retval -2 : the received datapacked is either to small or to large.
  *  \retval -3 : checksums didn't match.
@@ -82,7 +92,7 @@ int16_t getPacket(uint8_t *payload){
  *  
  *  \param payload location where data needs to be saved
  *  
- *  \retval Amount of bytes in payload.
+ *  \retval Amount of bytes in data packed.
  *  \retval -1 : if reading from the lidar has failed
  * 
  */
@@ -113,7 +123,11 @@ int16_t readCommand(uint8_t command, uint8_t* payload){
 			fprintf(stderr, "didnt receive response from lidar\n\r");
 			return -1;
 		}
-        if(canReadByte(&lidarCOM)) return getPacket(payload);
+
+        uint8_t receivedPayload[200] = '0';
+		uint16_t receivedLenght = 0;
+        if(canReadByte(&lidarCOM)) receivedLenght = getPacket(&receivedPayload);
+        if(receivedPayload[3] == command) return receivedLenght;
     }
     return -1;
 } /*readCommand*/
@@ -167,4 +181,69 @@ int writeCommand(uint8_t command, void* payload, uint16_t data_len){
         if(receivedPayload[3] == command) return 0;
     }
     return -1;
-}/* writeCommand */
+}/*writeCommand*/
+
+/*! \brief A 16 byte string indicating the product model name.
+ *  
+ *  \param name location where the name should be saved
+ *   
+ * 	\details This will always be SF40 followed by a null terminator.
+ *		 	 You can use this to verify the SF40/C is connected and operational over the selected interface.
+ */
+void getName(char* name){
+	uint8_t payload[24];
+
+	uint8_t dataLenght = readCommand(LIDAR_PRODUCT_NAME, &payload);
+
+	int i;
+	for(i = 0; i < dataLenght; i++){
+		name[i] = (char)payload[i+4];
+		if(payload[i+4] == '\0') break;
+	}
+	payload[i+4] = '\0';
+}/*getName*/
+
+
+/*! \brief A 16 byte string (null terminated) of the serial identifier assigned during production
+ *  
+ *  \param serialNumber location where the serial number should be saved
+ *   
+ */
+void getSerialNumber(char* serialNumber){
+	uint8_t payload[24];
+
+	uint8_t dataLenght = readCommand(LIDAR_SERIAL_NUMBER, &payload);
+
+	int i;
+	for(i = 0; i < dataLenght; i++){
+		serialNumber[i] = (char)payload[i+4];
+		if(payload[i+4] == '\0') break;
+	}
+	payload[i+4] = '\0';
+}/*getSerialNumber*/
+
+
+/*! \brief Userdata allows 16 bytes to be stored for any purpose.
+ *
+ *  \param data data to be stored on the lidar;
+ *   
+ */
+void sendUserData(uint8_t* data){
+	writeCommand(LIDAR_USER_DATA, data, 16);
+}/*sendUserData*/
+
+
+/*! \brief Userdata allows 16 bytes to be read for any purpose.
+ *
+ *  \param data data to be read from the lidar;
+ *   
+ */
+void getUserData(uint8_t* data){
+	uint8_t payload[24];
+	uint8_t dataLenght = readCommand(LIDAR_SERIAL_NUMBER, &payload);
+	
+	for(int i = 0; i < dataLenght; i++){
+		data[i] = (char)payload[i+4];
+		if(payload[i+4] == '\0') break;
+	}
+}/*getUserData*/
