@@ -17,8 +17,6 @@
 
     // Commands for the Lidar
     #define LIDAR_PRODUCT_NAME      0
-    #define LIDAR_HARDWARE_VERSION  1    
-    #define LIDAR_FIRMWARE_VERSION  2  
     #define LIDAR_SERIAL_NUMBER     3
     #define LIDAR_USER_DATA         9
     #define LIDAR_TOKEN             10
@@ -46,48 +44,28 @@
     #define LIDAR_ALARM_7           118
 
     // Lidar baudrates
-    #define LIDAR_115K2             4
-    #define LIDAR_230K4             5
-    #define LIDAR_460K8             6
-    #define LIDAR_921K6             7
+    typedef enum {
+        LIDAR_115K2 = 4,
+        LIDAR_230K4 = 5,
+        LIDAR_460K8 = 6,
+        LIDAR_921K6 = 7
+    } lidarBaudrate_t;
 
-    // Lidar output rates in point per second
-    #define LIDAR_20010_PPS         0
-    #define LIDAR_10005_PPS         1
-    #define LIDAR_6670_PPS          2
-    #define LIDAR_2001_PPS          3
+    // Lidar output rates in points per second
+    typedef enum {
+        LIDAR_20010_PPS = 0,
+        LIDAR_10005_PPS = 1,
+        LIDAR_6670_PPS  = 2,
+        LIDAR_2001_PPS  = 3
+    } lidarOutputRate_t;
 
     // Motor states
-    #define MOTOR_PRE_STARTUP       1
-    #define MOTOR_WAIT_ON_REVS      2
-    #define MOTOR_NORMAL            3
-    #define MOTOR_ERROR             4
-
-    typedef struct streamOutput{
-        uint8_t     alarmState;             // State of each alarm as described in Alarm state [111]
-        uint16_t    pps;                    // Points per second
-        int16_t     forwardOffset;          // Orientation offset as described in Forward offset [109]
-        int16_t     motorVoltage;           // Motor voltage as described in Motor voltage [107]
-        uint8_t     revolutionIndex;        // Increments as each new revolution begins. Note that this value wraps to 0 after 255.
-        uint16_t    pointTotal;             // Total number of points this revolution.
-        uint16_t    pointCount;             // Number of points in this packet.
-        uint16_t    pointStartIndex;        // Index of the first point in this packet.
-        int16_t     pointDistances[200];    // Array of distances [cm] for each point.
-    }streamOutput_t;
-
-    typedef struct readDistance{
-        int16_t     averageDistance;    // Average distance [cm]
-        int16_t     closestDistance;    // Closest distance [cm]
-        int16_t     furthestDistance;   // Furthest distance [cm]
-        int16_t     angle;              // Angle to closest distance [10ths of a degree]
-        uint32_t    calculationTime;    // Calculation time [us]
-    }readDistance_t;
-
-    typedef struct writeDistance{
-        int16_t     direction;          // Direction [degrees]
-        int16_t     width;              // Angular width [degrees]
-        int16_t     minimumDistance;    // Minimum distance [cm]
-    }writeDistance_t;
+    typedef enum {
+        MOTOR_PRE_STARTUP   = 1,
+        MOTOR_WAIT_ON_REVS  = 2,
+        MOTOR_NORMAL        = 3,
+        MOTOR_ERROR         = 4
+    } motorState_t;
 
     typedef union{
         uint8_t byte;
@@ -103,11 +81,76 @@
         };
     } alarms;
 
-    typedef struct alarm{
+    typedef struct{
+        alarms      alarmState;             // State of each alarm as described in Alarm state [111]
+        uint16_t    pps;                    // Points per second
+        int16_t     forwardOffset;          // Orientation offset as described in Forward offset [109]
+        int16_t     motorVoltage;           // Motor voltage as described in Motor voltage [107]
+        uint8_t     revolutionIndex;        // Increments as each new revolution begins. Note that this value wraps to 0 after 255.
+        uint16_t    pointTotal;             // Total number of points this revolution.
+        uint16_t    pointCount;             // Number of points in this packet.
+        uint16_t    pointStartIndex;        // Index of the first point in this packet.
+        int16_t     pointDistances[200];    // Array of distances [cm] for each point.
+    }streamOutput_t;
+
+    typedef struct{
+        int16_t     averageDistance;    // Average distance [cm]
+        int16_t     closestDistance;    // Closest distance [cm]
+        int16_t     furthestDistance;   // Furthest distance [cm]
+        int16_t     angle;              // Angle to closest distance [10ths of a degree]
+        uint32_t    calculationTime;    // Calculation time [us]
+    }readDistance_t;
+
+    typedef struct{
+        int16_t     direction;          // Direction [degrees]
+        int16_t     width;              // Angular width [degrees]
+        int16_t     minimumDistance;    // Minimum distance [cm]
+    }writeDistance_t;
+
+    typedef struct{
         uint8_t enabled;        // 1 means enabled, 0 means disabled.
         int16_t direction;      // Primary direction in degrees.
         int16_t width;          // Angular width in degrees around the primary direction.
         int16_t distance;       // Distance at which alarm is triggered.
     }alarm_t;
 
+
+
+    void getName(const char* name);
+    void getSerialNumber(const char* serialNumber);
+    void sendUserData(uint8_t* data);
+    void getUserData(uint8_t* data);
+
+    void setBaudrate(lidarBaudrate_t baudrate);
+    
+    uint16_t getToken(void);
+    void saveParameters(uint16_t token);
+    void restartLidar(uint16_t token);
+
+    float getVoltage(void);
+    float getMotorVoltage(void);
+    float getTemperature(void);
+    uint32_t getRevolutions(void);
+    alarms getAlarmState(void);
+    motorState_t getMotorState();
+    
+    void enableStream(bool enabled);
+
+    void enableLaser(uint8_t enabled);
+    bool checkLaser(void);
+
+    void setOutputRate(lidarOutputRate_t outputRate);
+    lidarOutputRate_t getOutputRate(void);
+
+    void setDistanceReading(writeDistance_t distanceSettings);
+    void getDistance(readDistance_t* receivedDistances);
+
+    void setOffset(uint8_t offset);
+    uint8_t getOffset(void);
+
+    void setAlarm(alarm_t alarmSettings, uint8_t alarmNumber);
+    alarm_t checkAlarm(uint8_t alarmNumber);
+
+
+    /*function to handle incoming stream*/
 #endif
