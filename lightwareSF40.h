@@ -137,7 +137,7 @@
     motorState_t getMotorState(void);
     
     void enableStream(bool enabled);
-    /*function to handle incoming stream*/
+    void getStream(streamOutput_t* outputData);
 
     void enableLaser(bool enabled);
     bool checkLaser(void);

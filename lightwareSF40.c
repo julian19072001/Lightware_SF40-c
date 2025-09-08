@@ -49,13 +49,13 @@ uint16_t createCRC(uint8_t* data, uint16_t size){
 } /*createCRC*/
 
 
-/*! \brief Get a packed form the lidar
+/*! \brief Get a packet form the lidar
  *  
  *  \param payload location where payload needs to be saved
  *  
- *  \retval Amount of bytes in data packed.
+ *  \retval Amount of bytes in data packet.
  *  \retval -1 : first byte doesnt equal the start byte.
- *  \retval -2 : the received datapacked is either to small or to large.
+ *  \retval -2 : the received datapacket is either to small or to large.
  *  \retval -3 : checksums didn't match.
  * 
  */
@@ -92,7 +92,7 @@ int16_t getPacket(uint8_t *payload){
  *  
  *  \param payload location where data needs to be saved
  *  
- *  \retval Amount of bytes in data packed.
+ *  \retval Amount of bytes in data packet.
  *  \retval -1 : if reading from the lidar has failed
  * 
  */
@@ -395,6 +395,36 @@ void enableStream(bool enabled){
 
     writeCommand(LIDAR_STREAM, payload, sizeof(payload));
 }
+
+/*! \brief Retrieve complete stream packed from incomming buffer
+ *  
+ *  \param outputData Location where streamdata packet needs to be saved
+ *  
+ *  \retval  0 : the outputeData has correctly be update with a new list of data points.
+ *  \retval -1 : failed getting packet
+ *  \retval -2 : received data is not streamed data. 
+ * 
+ */
+int getStream(streamOutput_t* outputData){
+	uint8_t payload[420];
+	if(getPacket(payload) <= 0) return -1;
+	if(payload[3] != LIDAR_DISTANCE_OUTPUT) return -2;
+
+	outputData->alarmState.byte = payload[4];
+	outputData->pps 			= (uint16_t)(payload[6]<<8 || payload[5]);
+	outputData->forwardOffset 	= (int16_t)(payload[8]<<8 || payload[7]);
+	outputData->motorVoltage	= (int16_t)(payload[10]<<8 || payload[9]);
+	outputData->revolutionIndex = payload[11];
+	outputData->pointTotal		= (uint16_t)(payload[13]<<8 || payload[12]);
+	outputData->pointCount		= (uint16_t)(payload[15]<<8 || payload[14]);
+	outputData->pointStartIndex = (uint16_t)(payload[17]<<8 || payload[16]);
+
+	for(uint16_t i = 0; i < outputData->pointCount; i++){
+		outputData->pointDistances[i] = (int16_t)(payload[(i*2)+19]<<8 || payload[(i*2)+18]);
+	}
+
+	return 0;
+}/*getStream*/
 
 
 /*! \brief Writing to this function will enable or disable the firing of the laser.
