@@ -35,13 +35,17 @@
     #define LIDAR_FORWARD_OFFSET    109
     #define LIDAR_REVOLUTIONS       110
     #define LIDAR_ALARM_STATE       111
-    #define LIDAR_ALARM_1           112
-    #define LIDAR_ALARM_2           113
-    #define LIDAR_ALARM_3           114
-    #define LIDAR_ALARM_4           115
-    #define LIDAR_ALARM_5           116
-    #define LIDAR_ALARM_6           117
-    #define LIDAR_ALARM_7           118
+    
+    // Lidar alarm commands
+    typedef enum {
+        LIDAR_ALARM_1 = 112,  
+        LIDAR_ALARM_2 = 113,  
+        LIDAR_ALARM_3 = 114, 
+        LIDAR_ALARM_4 = 115, 
+        LIDAR_ALARM_5 = 116,  
+        LIDAR_ALARM_6 = 117,  
+        LIDAR_ALARM_7 = 118   
+    } lidar_alarm_t;
 
     // Lidar baudrates
     typedef enum {
@@ -79,10 +83,10 @@
             uint8_t alarm7 : 1;
             uint8_t alarmAny : 1;
         };
-    } alarms;
+    } alarms_t;
 
     typedef struct{
-        alarms      alarmState;             // State of each alarm as described in Alarm state [111]
+        alarms_t    alarmState;             // State of each alarm as described in Alarm state [111]
         uint16_t    pps;                    // Points per second
         int16_t     forwardOffset;          // Orientation offset as described in Forward offset [109]
         int16_t     motorVoltage;           // Motor voltage as described in Motor voltage [107]
@@ -129,10 +133,11 @@
     float getMotorVoltage(void);
     float getTemperature(void);
     uint32_t getRevolutions(void);
-    alarms getAlarmState(void);
-    motorState_t getMotorState();
+    alarms_t getAlarmState(void);
+    motorState_t getMotorState(void);
     
     void enableStream(bool enabled);
+    /*function to handle incoming stream*/
 
     void enableLaser(bool enabled);
     bool checkLaser(void);
@@ -140,17 +145,15 @@
     void setOutputRate(lidarOutputRate_t outputRate);
     lidarOutputRate_t getOutputRate(void);
 
-    void setDistanceReading(writeDistance_t distanceSettings);
-    void getDistance(readDistance_t* receivedDistances);
+    void getDistance(writeDistance_t distanceSettings, readDistance_t* receivedDistances);
 
-    void setOffset(uint8_t offset);
-    uint8_t getOffset(void);
+    void setOffset(int16_t offset);
+    int16_t getOffset(void);
 
-    void setAlarm(alarm_t alarmSettings, uint8_t alarmNumber);
-    alarm_t checkAlarm(uint8_t alarmNumber);
+    void setAlarm(alarm_t alarmSettings, lidar_alarm_t alarmNumber);
+    alarms_t checkAlarm(lidar_alarm_t alarmNumber);
 
     void setupLidar(const char* port, lidarBaudrate_t baudrate);
     void closeLidar(void);
 
-    /*function to handle incoming stream*/
 #endif
