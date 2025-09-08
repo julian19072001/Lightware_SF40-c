@@ -3,6 +3,7 @@
 
     #include <stdio.h>
     #include <stdint.h>
+    #include <unistd.h>
     #include <stdbool.h>
     #include <string.h>
 
@@ -133,10 +134,11 @@
     float getMotorVoltage(void);
     float getTemperature(void);
     uint32_t getRevolutions(void);
-    alarms_t getAlarmState(void);
+    void getAlarmState(alarms_t* alarms);
     motorState_t getMotorState(void);
     
     void enableStream(bool enabled);
+    uint8_t getStreamState(void);
     int getStream(streamOutput_t* outputData);
 
     void enableLaser(bool enabled);
@@ -155,5 +157,7 @@
 
     void setupLidar(const char* port, lidarBaudrate_t baudrate);
     void closeLidar(void);
+
+    //#define DEBUG
 
 #endif

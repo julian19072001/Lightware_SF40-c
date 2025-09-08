@@ -9,6 +9,7 @@
  */
 
 #include "lightwareSF40.h"
+#include <unistd.h>
 
 
 device_t lidarCOM;
@@ -111,9 +112,18 @@ int16_t readCommand(uint8_t command, uint8_t* payload){
 	packet[4] = createCRC(packet, 4);
 	packet[5] = createCRC(packet, 4) >> 8;
 	
+	#ifdef DEBUG
+	printf("Sending: ");
+	#endif
 	for(int i = 0; i < 6; i++){
 		sendByte(&lidarCOM, packet[i]);
+		#ifdef DEBUG
+		printf("%02x ", packet[i]);
+		#endif
 	}
+	#ifdef DEBUG
+	printf("\n");
+	#endif
 
     uint16_t cycles_Waited = 0;
     while(true){
@@ -130,9 +140,18 @@ int16_t readCommand(uint8_t command, uint8_t* payload){
 		uint16_t receivedLenght = 0;
         if(canReadByte(&lidarCOM)) receivedLenght = getPacket(receivedPayload); 
 		if(receivedPayload[3] == packet[3]){
+			#ifdef DEBUG
+			printf("Receiving: ");
+			#endif
 			for(int i = 0; i < receivedLenght+5; i++){
 				payload[i] = receivedPayload[i];
+				#ifdef DEBUG
+				printf("%02x ", receivedPayload[i]);
+				#endif
 			}
+			#ifdef DEBUG
+			printf("\n");
+			#endif
 			return receivedLenght;
 		}
     }
@@ -168,9 +187,18 @@ int writeCommand(uint8_t command, void* payload, uint16_t data_len){
 	packet[4 + data_len] = createCRC(packet, 4 + data_len);
 	packet[5 + data_len] = createCRC(packet, 4 + data_len) >> 8;
 	
+	#ifdef DEBUG
+	printf("Sending: ");
+	#endif
 	for(int i = 0; i < 6 + data_len; i++){
 		sendByte(&lidarCOM, packet[i]);
+		#ifdef DEBUG
+		printf("%02x ", packet[i]);
+		#endif
 	}
+	#ifdef DEBUG
+	printf("\n");
+	#endif
 
     uint16_t cycles_Waited = 0;
     while(true){
@@ -362,17 +390,17 @@ uint32_t getRevolutions(void){
 
 /*! \brief Reading this function will return a byte with the current state of all alarms.
  *
- *  \return array if 1 bit states for all alarms
+ *  \param alarms array if 1 bit states for all alarms
  * 
  *  \details Each bit represents 1 of the 7 alarms, if the bit is set then the alarm is currently triggered. 
  * 			 The most significant bit is set when any alarm is currently triggered.
  */
-alarms_t getAlarmState(void){
+void getAlarmState(alarms_t* alarms){
 	uint8_t payload[7];
 	
 	readCommand(LIDAR_ALARM_STATE, payload);
 
-	return (alarms_t)payload[4];
+	alarms->byte = payload[4];
 }/*getAlarmState*/
     
 
@@ -387,7 +415,7 @@ motorState_t getMotorState(void){
 	
 	readCommand(LIDAR_MOTOR_STATE, payload);
 
-	return payload[4];
+	return (motorState_t)payload[4];
 }/*getMotorState*/
 
 
@@ -396,10 +424,18 @@ motorState_t getMotorState(void){
  *  \param enabled turn on or off the stream function
  */
 void enableStream(bool enabled){
-	uint8_t payload[1];
+	uint8_t payload[4] = {0};
     payload[0] = enabled ? 3 : 0;
 
-    writeCommand(LIDAR_STREAM, payload, sizeof(payload));
+    writeCommand(LIDAR_STREAM, payload, 4);
+}
+
+uint8_t getStreamState(void){
+	uint8_t payload[7];
+	
+	readCommand(LIDAR_STREAM, payload);
+
+	return payload[4];
 }
 
 /*! \brief Retrieve complete stream packed from incomming buffer
@@ -473,7 +509,7 @@ lidarOutputRate_t getOutputRate(void){
 
 	readCommand(LIDAR_OUTPUT_RATE, payload);
 
-	return payload[4];
+	return (lidarOutputRate_t)payload[4];
 }/*getOutputRate*/
 
 
@@ -582,6 +618,8 @@ void setupLidar(const char* port, lidarBaudrate_t baudrate){
 	lidarCOM.baudrate = baudrate;
 	lidarCOM.devicePort = port;
 	setupDevice(&lidarCOM);
+
+	flushBuffer(&lidarCOM);
 }/*setupLidar*/
 
 
