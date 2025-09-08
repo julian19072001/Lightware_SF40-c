@@ -62,7 +62,7 @@ uint16_t createCRC(uint8_t* data, uint16_t size){
 int16_t getPacket(uint8_t *payload){
 	uint16_t crc;
 	flag_t header;
-	
+
     for(int i = 0; i < 3; i++){
         readByte(&lidarCOM, &payload[i]);
     }
@@ -101,6 +101,8 @@ int16_t readCommand(uint8_t command, uint8_t* payload){
 	header.pay_len = 1;
 	header.rw = 0;
 	
+	flushBuffer(&lidarCOM);
+
 	uint8_t packet[6];
 	packet[0] = STARTBIT;
 	packet[1] = header.sr;
@@ -115,7 +117,7 @@ int16_t readCommand(uint8_t command, uint8_t* payload){
 
     uint16_t cycles_Waited = 0;
     while(true){
-        _delay_us(10);
+        usleep(10);
         cycles_Waited++;
 
         //if the wait time is longer then 100ms report it as a not succesfull
@@ -124,10 +126,15 @@ int16_t readCommand(uint8_t command, uint8_t* payload){
 			return -1;
 		}
 
-        uint8_t receivedPayload[200] = '0';
+        uint8_t receivedPayload[206] = {0};
 		uint16_t receivedLenght = 0;
-        if(canReadByte(&lidarCOM)) receivedLenght = getPacket(&receivedPayload);
-        if(receivedPayload[3] == command) return receivedLenght;
+        if(canReadByte(&lidarCOM)) receivedLenght = getPacket(receivedPayload); 
+		if(receivedPayload[3] == packet[3]){
+			for(int i = 0; i < receivedLenght+5; i++){
+				payload[i] = receivedPayload[i];
+			}
+			return receivedLenght;
+		}
     }
     return -1;
 } /*readCommand*/
@@ -156,18 +163,18 @@ int writeCommand(uint8_t command, void* payload, uint16_t data_len){
 	packet[2] = header.sr >> 8;
 	packet[3] = command;
 	for(int i = 0; i < data_len; i++){
-		packet[4 + i] = *payload >> (i * 8);
+		packet[4 + i] = ((uint8_t *)payload)[i];
 	}
 	packet[4 + data_len] = createCRC(packet, 4 + data_len);
 	packet[5 + data_len] = createCRC(packet, 4 + data_len) >> 8;
 	
 	for(int i = 0; i < 6 + data_len; i++){
-		sendByte(lidarCOM, packet[i]);
+		sendByte(&lidarCOM, packet[i]);
 	}
 
     uint16_t cycles_Waited = 0;
     while(true){
-        _delay_us(10);
+        usleep(10);
         cycles_Waited++;
         
         //if the wait time is longer then 100ms report it as a not succesfull
@@ -176,8 +183,8 @@ int writeCommand(uint8_t command, void* payload, uint16_t data_len){
 			return -1;
 		}
 
-        uint8_t receivedPayload[200] = '0';
-        if(canReadByte(&lidarCOM)) getPacket(&receivedPayload);
+        uint8_t receivedPayload[200] = {0};
+        if(canReadByte(&lidarCOM)) getPacket(receivedPayload);
         if(receivedPayload[3] == command) return 0;
     }
     return -1;
@@ -192,15 +199,14 @@ int writeCommand(uint8_t command, void* payload, uint16_t data_len){
  */
 void getName(char* name){
 	uint8_t payload[22];
-
-	uint8_t dataLenght = readCommand(LIDAR_PRODUCT_NAME, payload);
+	readCommand(LIDAR_PRODUCT_NAME, payload);
 
 	int i;
-	for(i = 0; i < dataLenght; i++){
+	for(i = 0; i < 16; i++){
 		name[i] = (char)payload[i+4];
 		if(payload[i+4] == '\0') break;
 	}
-	payload[i+4] = '\0';
+	name[i+4] = '\0';
 }/*getName*/
 
 
@@ -303,7 +309,7 @@ void restartLidar(uint16_t token){
  */
 float getVoltage(void){
 	uint8_t payload[10];
-	
+
 	readCommand(LIDAR_INCOMING_VOLTAGE, payload);
 
 	return LIDAR_VOLTAGE((uint32_t)payload[7]<<24 || (uint32_t)payload[6]<<16 || 
@@ -320,7 +326,7 @@ float getMotorVoltage(void){
 	
 	readCommand(LIDAR_MOTOR_VOLTAGE, payload);
 
-	return (float)(payload[5]<<8 || payload[4])/1000.0f;
+	return (float)(payload[5]<<8 | payload[4])/1000.0f;
 }/*getMotorVoltage*/
     
 
@@ -411,16 +417,16 @@ int getStream(streamOutput_t* outputData){
 	if(payload[3] != LIDAR_DISTANCE_OUTPUT) return -2;
 
 	outputData->alarmState.byte = payload[4];
-	outputData->pps 			= (uint16_t)(payload[6]<<8 || payload[5]);
-	outputData->forwardOffset 	= (int16_t)(payload[8]<<8 || payload[7]);
-	outputData->motorVoltage	= (int16_t)(payload[10]<<8 || payload[9]);
+	outputData->pps 			= (uint16_t)(payload[6]<<8 | payload[5]);
+	outputData->forwardOffset 	= (int16_t)(payload[8]<<8 | payload[7]);
+	outputData->motorVoltage	= (int16_t)(payload[10]<<8 | payload[9]);
 	outputData->revolutionIndex = payload[11];
-	outputData->pointTotal		= (uint16_t)(payload[13]<<8 || payload[12]);
-	outputData->pointCount		= (uint16_t)(payload[15]<<8 || payload[14]);
-	outputData->pointStartIndex = (uint16_t)(payload[17]<<8 || payload[16]);
+	outputData->pointTotal		= (uint16_t)(payload[13]<<8 | payload[12]);
+	outputData->pointCount		= (uint16_t)(payload[15]<<8 | payload[14]);
+	outputData->pointStartIndex = (uint16_t)(payload[17]<<8 | payload[16]);
 
 	for(uint16_t i = 0; i < outputData->pointCount; i++){
-		outputData->pointDistances[i] = (int16_t)(payload[(i*2)+19]<<8 || payload[(i*2)+18]);
+		outputData->pointDistances[i] = (int16_t)(payload[(i*2)+19]<<8 | payload[(i*2)+18]);
 	}
 
 	return 0;
@@ -485,12 +491,12 @@ void getDistance(writeDistance_t distanceSettings, readDistance_t* receivedDista
 
 	readCommand(LIDAR_DISTANCE, payload);
 
-	receivedDistances->averageDistance 	= (payload[5]<<8 || payload[4]);
-	receivedDistances->closestDistance 	= (payload[7]<<8 || payload[6]);
-	receivedDistances->furthestDistance = (payload[9]<<8 || payload[8]);
-	receivedDistances->angle 			= (payload[11]<<8 || payload[10]);
-	receivedDistances->calculationTime	= ((uint32_t)payload[15]<<24 || (uint32_t)payload[14]<<16 || 
-			 							   (uint32_t)payload[13]<<8 || (uint32_t)payload[12])
+	receivedDistances->averageDistance 	= (payload[5]<<8 | payload[4]);
+	receivedDistances->closestDistance 	= (payload[7]<<8 | payload[6]);
+	receivedDistances->furthestDistance = (payload[9]<<8 | payload[8]);
+	receivedDistances->angle 			= (payload[11]<<8 | payload[10]);
+	receivedDistances->calculationTime	= ((uint32_t)payload[15]<<24 | (uint32_t)payload[14]<<16 || 
+			 							   (uint32_t)payload[13]<<8 | (uint32_t)payload[12]);
 }/*getDistance*/
 
 
@@ -570,7 +576,7 @@ void setupLidar(const char* port, lidarBaudrate_t baudrate){
 			break;
 		default:
 			lidarCOM.baudrate = B115200;
-			break
+			break;
 	}
 	
 	lidarCOM.baudrate = baudrate;
