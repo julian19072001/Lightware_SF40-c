@@ -211,7 +211,7 @@ int writeCommand(uint8_t command, void* payload, uint16_t data_len){
 			return -1;
 		}
 
-        uint8_t receivedPayload[200] = {0};
+        uint8_t receivedPayload[220] = {0};
         if(canReadByte(&lidarCOM)) getPacket(receivedPayload);
         if(receivedPayload[3] == command) return 0;
     }
