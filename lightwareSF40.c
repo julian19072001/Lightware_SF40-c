@@ -136,7 +136,7 @@ int16_t readCommand(uint8_t command, uint8_t* payload){
 			return -1;
 		}
 
-        uint8_t receivedPayload[206] = {0};
+        uint8_t receivedPayload[220] = {0};
 		uint16_t receivedLenght = 0;
         if(canReadByte(&lidarCOM)) receivedLenght = getPacket(receivedPayload); 
 		if(receivedPayload[3] == packet[3]){
