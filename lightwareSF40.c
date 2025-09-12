@@ -615,7 +615,6 @@ void setupLidar(const char* port, lidarBaudrate_t baudrate){
 			break;
 	}
 	
-	lidarCOM.baudrate = baudrate;
 	lidarCOM.devicePort = port;
 	setupDevice(&lidarCOM);
 
